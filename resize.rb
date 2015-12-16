@@ -5,28 +5,83 @@ require "fileutils" # file-handling tools
 # "strip" is the smaller size, which I always want to be resized to 415 pixels high
 # puts Dir.pwd
 
-@quality = "90"
+
 # @size = "PixelsPerInch"
 # we will pass the directory to search for images in as an argument
 
 puts "Enter Resolution size ( percent % ): "
 @size = gets().chomp()
 
+
 if @size.to_i.to_s == @size
 
   @directory = Dir.pwd #store current/working directory
 
-  @resize_dir = "#{@directory}/resized"
-
-  #creates resized folder
-  unless File.directory? @resize_dir
-    puts "Creating folder #{@resize_dir}/"
-    Dir.mkdir @resize_dir
-  end
 
   @strip_dimension = "#{@size.to_i}%"
 
-#method for resizing image
+  #method for copying images
+  def copy_images_to_image_folder(images)
+    files = Dir.glob(images) #retrieve all pictures in the directory.
+    if files.size > 0
+      puts "--------------Copying #{files.size} images...--------------"
+      files.each do |file|
+        # puts file
+        puts "############## Copying #{File.basename(file)} ############## "
+        # puts "Copying ############## #{File.basename(file)} to destination folder ############## #{@original_images}"
+        FileUtils.cp_r "#{file}", @images_at_image_folder #creates backup unless it satisfy the accepted_formats
+        # FileUtils.rm(file)
+      end
+      puts "--------------Finished copying #{files.size} images--------------"
+    end
+  end
+
+  #method for copying images
+  def copy_images(images)
+    files = Dir.glob(images) #retrieve all pictures in the directory.
+    if files.size > 0
+      puts "--------------Copying #{files.size} images...--------------"
+      files.each do |file|
+        # puts file
+        puts "############## Copying #{File.basename(file)} ############## "
+        # puts "Copying ############## #{File.basename(file)} to destination folder ############## #{@original_images}"
+        FileUtils.cp_r "#{file}", @original_images #creates backup unless it satisfy the accepted_formats
+        # FileUtils.rm(file)
+      end
+      puts "--------------Finished copying #{files.size} images--------------"
+    end
+  end
+
+  def delete_all_pictures(pictures)
+    files = Dir.glob(pictures) #retrieve all pictures in the directory.
+    if files.size > 0
+      puts "--------------Deleting #{files.size} images...--------------"
+      files.each do |file|
+        # puts file
+        puts "############## Deleting #{File.basename(file)} ############## "
+        # puts "Copying ############## #{File.basename(file)} to destination folder ############## #{@original_images}"
+        FileUtils.rm(file)
+      end
+      puts "--------------Finished Deleting #{files.size} images--------------"
+    end
+  end
+
+
+  def get_resize_images(resize)
+    files = Dir.glob(resize) #retrieve all pictures in the directory.
+    if files.size > 0
+      puts "--------------Resizing #{files.size} images at #{resize}--------------"
+      files.each do |file|
+        # puts "Resizing #{file}"
+        # puts file
+        resize_image(file)
+      end
+      puts "--------------Finished resizing #{files.size} images--------------"
+    end
+  end
+
+
+  #method for resizing image
   def resize_image(file)
     puts "Resizing image: #{file}"
     @image = "\"#{file}\""
@@ -36,42 +91,69 @@ if @size.to_i.to_s == @size
     puts l while l = stderr.gets # output any debug stuff from the call to 'convert'
   end
 
-#SECTION BACKUP
-  accepted_formats = [".png", ".jpg"]
-  Dir.glob("*").select { |f|
+  Dir.glob("**/").select { |f|
     if File.directory? f
-      if f.eql?("resized")
-        # puts f
-      else
-        puts "############ Creating backup folder of #{f}"
-        FileUtils.cp_r f, @resize_dir #creates backup folder
+      if f.include?("image")
+        @parent = File.dirname(f)
+        @original_images = "#{@parent}/image_original"
+        if !f.include?("image_original")
+          # @image_folder = f
+          # puts "#{f}"
+          # puts "Creating image_original folder at #{@parent}"
+          FileUtils.mkdir_p @original_images
+        end
       end
-
-    elsif accepted_formats.include?(File.extname(f))
-      puts "############ Creating backup picture of #{f}"
-      FileUtils.cp_r f, @resize_dir #creates backup unless it satisfy the accepted_formats
     end
-
   }
 
-  @image_files = File.join("#{@directory}/resized", "**/*.{jpg,png}")
+
+  #SECTION BACKUP
+  accepted_formats = [".png", ".jpg"]
+  Dir.glob("**/").select { |f|
+    if File.directory? f
+      if f.include?("image")
+        @parent = File.dirname(f)
+        @original_images = "#{@parent}/image_original"
+        @images_at_image_folder = "#{@parent}/image"
+        # puts "#{@parent}"
 
 
-  files = Dir.glob(@image_files) #retrieve all pictures in the directory.
+        if !f.include?("image_original")
+          @image_folder = f
+          # puts "#{f}"
+          # puts "Creating image_original folder at #{@parent}"
+          # FileUtils.mkdir_p @original_images
+        end
 
-  puts "--------------Resizing #{files.size} images...--------------"
+        if f.include?("image_original")
+          # puts "#{folder}"
+          @folder_image_original = f
+          if Dir["#{@folder_image_original}/*.{jpg,png}"].empty?
+            @image_files = File.join("#{@image_folder}", "**/*.{jpg,png}")
+            copy_images(@image_files)
 
-  files.each do |file|
-    # puts "Resizing #{file}"
-    #puts file
-    resize_image(file)
+            @images_of_image_folder = File.join("#{@image_folder}", "**/*.{jpg,png}")
+            get_resize_images(@images_of_image_folder)
+          else
+            puts "Not empty #{@folder_image_original}"
+            @image_file = File.join("#{@image_folder}", "**/*.{jpg,png}")
+            delete_all_pictures(@image_file)
 
-  end
+            @images_of_original_folder = File.join("#{f}", "**/*.{jpg,png}")
+            copy_images_to_image_folder(@images_of_original_folder)
 
-  puts "--------------Finished resizing #{files.size} images--------------"
+            @images_of_image_folder = File.join("#{@image_folder}", "**/*.{jpg,png}")
+            get_resize_images(@images_of_image_folder)
+          end
+        end
 
+      end
+
+    end
+  }
 
 else
   puts "That is not an integer."
 end
+
 
